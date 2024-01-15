@@ -1,6 +1,6 @@
 import chess
 import chess.pgn
-import openai
+from openai import OpenAI
 
 
 def get_legal_moves(board):
@@ -36,15 +36,15 @@ def generate_prompt(game: chess.pgn.Game, board: chess.Board) -> str:
     Move: e5"""
 
 
-def get_move_from_prompt(prompt: str) -> str:
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+def get_move_from_prompt(prompt: str, client: OpenAI) -> str:
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo-1106",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ]
     )
-    line_containing_move = response['choices'][0]['message']['content']
+    line_containing_move = response.choices[0].message.content
     move = line_containing_move[6:]
     return move
 
@@ -66,6 +66,7 @@ def try_moving(move: str, board: chess.Board):
 
 
 game, board = init_game()
+client = OpenAI()
 while not board.is_game_over():
     if board.turn == chess.WHITE:
         print_board(board)
@@ -76,7 +77,7 @@ while not board.is_game_over():
             print(game, file=open("out.pgn", "w"), end="\n\n")
     else:
         prompt = generate_prompt(game, board)
-        move = get_move_from_prompt(prompt)
+        move = get_move_from_prompt(prompt, client)
         moved_successfully = try_moving(move, board)
         if moved_successfully:
             game = game.add_variation(board.move_stack[-1])
